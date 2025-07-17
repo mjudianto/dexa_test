@@ -17,6 +17,29 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+exports.getUser = async (req, res) => {
+  const userId = req.params.id; 
+
+  try {
+    const user = await User.findOne({
+      where: { id: userId },
+      include: [{
+        model: Position,
+        as: 'position'
+      }]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user); // Return the found user
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 exports.createUser = async (req, res) => {
   const { name, email, password, position_id, phone_number, profile_picture } = req.body;
 
@@ -53,6 +76,7 @@ exports.updateUser = async (req, res) => {
       res.status(404).json({ message: "User not found" });
     }
   } catch (err) {
+    console.log(err.message);
     res.status(500).json({ error: err.message });
   }
 };

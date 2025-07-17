@@ -1,71 +1,122 @@
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { User } from '../types/User';
+import { useRouter } from 'next/router';
+import { getUser } from "@/lib/user";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"none" | "info" | "password">("info");
+  const [userData, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const [user, setUser] = useState({
-    name: "Mathew Judianto",
-    image: "",
-    position: "IT Support",
-    phone: "08123456789",
-    email: "mathew.judianto@dexagroup.com",
-    region: "Indonesia",
-    bio: "Supporting IT operations with professionalism and care.",
-    available: false
-  });
+  useEffect(() => {
+    const storedUserData = localStorage.getItem("userData");
+    if (storedUserData) {
+      setUser(JSON.parse(storedUserData));
+    }
+  }, []);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setUser({ ...user, [name]: type === "checkbox" ? checked : value });
+    const { name, value } = e.target;
+    if (userData) {
+      setUser((prevData) => ({
+        ...prevData!,
+        [name]: value,
+      }));
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    if (!userData) return;
+
+    const token = localStorage.getItem("authToken");
+
+    setLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5050/api/users/${userData.id}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update profile");
+      }
+
+      await getUser();
+      alert("Profile updated successfully!");
+    } catch (err) {
+      console.error("Error during profile update:", err);
+      alert("Failed to update profile.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleHomeClick = () => {
+    router.push("/");
   };
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       <nav className="relative bg-gradient-to-r from-[#b0241b] via-[#f24d3c] to-[#bf1e1e] px-6 py-4 flex items-center shadow">
         <div className="hidden sm:flex items-center gap-3">
-          <Image src="/logo dexa.jpg" alt="Dexa Logo" width={100} height={40} className="object-contain" />
+          <Image
+            src="/logo dexa.jpg"
+            alt="Dexa Logo"
+            width={100}
+            height={40}
+            className="object-contain"
+            onClick={handleHomeClick}
+          />
         </div>
         <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
           <span className="text-white font-semibold text-xl tracking-wide text-center">Profile</span>
         </div>
+        <button
+          onClick={handleHomeClick}
+          className="absolute right-6 border border-white text-white font-semibold text-l px-4 py-2 rounded-full hover:bg-white hover:text-black transition"
+        >
+          Back To Home
+        </button>
       </nav>
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
         <div className="bg-white rounded-2xl shadow-md overflow-hidden w-full">
           <div className="h-24 bg-gray-100 w-full" />
           <div className="flex justify-center -mt-12">
-            {user.image ? (
+            {userData?.profile_picture ? (
               <Image
-                src={user.image}
-                alt="Profile"
+                src={userData?.profile_picture}
+                alt={userData.name.charAt(0)}
                 width={80}
                 height={80}
                 className="rounded-full border-4 border-white object-cover shadow"
               />
             ) : (
               <div className="w-20 h-20 bg-gray-300 rounded-full border-4 border-white flex items-center justify-center text-white text-2xl font-bold shadow">
-                {user.name[0]}
+                {userData?.name.charAt(0)}
               </div>
             )}
           </div>
           <div className="text-center px-6 py-4">
-            <h2 className="text-lg font-semibold text-blue-600">{user.name}</h2>
-            <p className="text-sm text-gray-700">{user.position}</p>
-            <p className="mt-2 text-sm text-gray-500">{user.bio}</p>
+            <h2 className="text-lg font-semibold text-blue-600">{userData?.name}</h2>
+            <p className="text-sm text-gray-700">{userData?.position.division}-{userData?.position.description}</p>
+          </div>
+          <div className="border-t divide-y">
+            <div className="flex justify-between px-6 py-3 text-sm">
+              <span className="text-gray-500">Email</span>
+              <span className="text-blue-600 break-all">{userData?.email}</span>
+            </div>
           </div>
           <div className="border-t divide-y">
             <div className="flex justify-between px-6 py-3 text-sm">
               <span className="text-gray-500">Phone</span>
-              <span className="text-blue-600">{user.phone}</span>
-            </div>
-            <div className="flex justify-between px-6 py-3 text-sm">
-              <span className="text-gray-500">Email</span>
-              <span className="text-blue-600 break-all">{user.email}</span>
-            </div>
-            <div className="flex justify-between px-6 py-3 text-sm">
-              <span className="text-gray-500">Region</span>
-              <span className="text-blue-600">{user.region}</span>
+              <span className="text-blue-600 break-all">{userData?.phone_number}</span>
             </div>
           </div>
           <div className="mt-4 px-6 pb-4 flex flex-col gap-2">
@@ -98,7 +149,16 @@ export default function ProfilePage() {
                     <label className="block text-sm font-medium mb-1">Name</label>
                     <input
                       name="name"
-                      value={user.name}
+                      value={userData?.name}
+                      onChange={handleProfileChange}
+                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Phone Number</label>
+                    <input
+                      name="phone_number"
+                      value={userData?.phone_number ?? ""}
                       onChange={handleProfileChange}
                       className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-300"
                     />
@@ -107,18 +167,9 @@ export default function ProfilePage() {
                     <label className="block text-sm font-medium mb-1">Email Address</label>
                     <input
                       name="email"
-                      value={user.email}
+                      value={userData?.email}
                       readOnly
                       className="w-full bg-gray-100 border rounded px-3 py-2 text-gray-600"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Location</label>
-                    <input
-                      name="region"
-                      value={user.region}
-                      onChange={handleProfileChange}
-                      className="w-full border rounded px-3 py-2"
                     />
                   </div>
                 </div>
@@ -138,7 +189,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="mt-6 text-right">
-                <button className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">Save Changes</button>
+                <button onClick={handleSaveChanges} className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">Save Changes</button>
               </div>
             </>
           )}

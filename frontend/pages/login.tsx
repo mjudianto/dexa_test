@@ -5,7 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { useState } from "react";
 import Modal from "@/components/Modal";
 import { loginUser } from "@/lib/auth"; 
-import { error } from "console";
+import { useRouter } from 'next/router'; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,15 +17,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+
 export default function Login() {
   const [showRegister, setShowRegister] = useState(false);
   const [showReset, setShowReset] = useState(false);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loginError, setLoginError] = useState("");
+
+  const router = useRouter(); // useRouter hook for redirection
 
   const validateEmail = (value: string) => {
     setEmail(value);
@@ -44,8 +46,9 @@ export default function Login() {
     setLoginError("");
 
     try {
-      // const userData = await loginUser(email, password);
-      console.log("Login success:");
+      const userData = await loginUser(email, password);
+
+      router.push("/")
     } catch (err: any) {
       setLoginError(err.message || "Login failed");
     }
@@ -108,7 +111,7 @@ export default function Login() {
             {/* Error */}
             {loginError && (
               <div className="text-sm text-red-600 font-medium bg-white px-3 py-2 rounded">
-                {errorMessage}
+                {loginError}
               </div>
             )}
 

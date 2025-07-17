@@ -6,7 +6,7 @@ export default function HomeRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/login");
+    router.replace("/home");
   }, [router]);
 
   return null;

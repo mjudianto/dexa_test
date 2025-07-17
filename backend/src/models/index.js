@@ -9,7 +9,7 @@ const sequelize = new Sequelize(
     host: dbConfig.HOST,
     dialect: dbConfig.dialect,
     pool: dbConfig.pool,
-    logging: false, // Optional: disable SQL logs
+    logging: false, 
   }
 );
 
@@ -33,5 +33,7 @@ db.Attendance.belongsTo(db.MasterUser, {
   foreignKey: "user_id",
   as: "user",
 });
+
+console.log(db.Attendance)
 
 module.exports = db;
