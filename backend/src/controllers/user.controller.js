@@ -85,7 +85,7 @@ exports.updateUser = async (req, res) => {
 
     if (req.file) {
       payload.profile_picture = req.file.filename;
-      
+
       const oldFilename = existingUser.profile_picture;
 
       if (oldFilename) {
@@ -125,3 +125,20 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.updatePassword = async (req, res) => {
+  const { id } = req.params;
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await User.findByPk(id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  const valid = await bcrypt.compare(currentPassword, user.password);
+  if (!valid) return res.status(400).json({ message: "Current password is incorrect" });
+
+  const hashed = await bcrypt.hash(newPassword, 10);
+  await User.update({ password: hashed }, { where: { id } });
+
+  res.json({ message: "Password updated successfully" });
+};
+

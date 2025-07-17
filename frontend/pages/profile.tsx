@@ -9,6 +9,11 @@ export default function ProfilePage() {
   const [userData, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
 
   const router = useRouter();
 
@@ -89,6 +94,50 @@ export default function ProfilePage() {
       setLoading(false);
     }
   };
+
+  const handleUpdatePassword = async () => {
+    if (!userData) return;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert("Please fill in all password fields.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert("New passwords do not match.");
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    const token = localStorage.getItem("authToken");
+
+    try {
+      const res = await fetch(`http://localhost:5050/api/users/${userData.id}/password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      if (!res.ok) throw new Error((await res.json()).message);
+
+      alert("Password updated successfully.");
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      alert(`Failed to update password: ${err.message}`);
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
 
   const handleHomeClick = () => router.push("/");
 
@@ -226,19 +275,39 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Current Password</label>
-                  <input type="password" className="w-full border rounded px-3 py-2" />
+                    <input
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className="w-full border rounded px-3 py-2"
+                      />                
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">New Password</label>
-                  <input type="password" className="w-full border rounded px-3 py-2" />
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Confirm New Password</label>
-                  <input type="password" className="w-full border rounded px-3 py-2" />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                  />
                 </div>
               </div>
               <div className="mt-6 text-right">
-                <button className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">Update Password</button>
+                <button 
+                  onClick={handleUpdatePassword}
+                  className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700"
+                >
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                </button>
               </div>
             </>
           )}

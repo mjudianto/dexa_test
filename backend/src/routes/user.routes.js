@@ -10,5 +10,6 @@ router.get('/:id', authMiddleware.verifyToken, userController.getUser);
 router.post('/', authMiddleware.verifyToken, userController.createUser);
 router.put('/:id', authMiddleware.verifyToken, upload.single('profile_file'), userController.updateUser);
 router.delete('/:id', authMiddleware.verifyToken, userController.deleteUser);
+router.put('/:id/password', authMiddleware.verifyToken, userController.updatePassword);
 
 module.exports = router;
