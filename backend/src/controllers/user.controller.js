@@ -1,13 +1,14 @@
 const db = require('../models');
 const User = db.MasterUser;
-const Position = db.MasterPosition; // Include this
+const Position = db.MasterPosition; 
+const bcrypt = require('bcryptjs');
 
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
       include: [{
         model: Position,
-        as: 'position' // match the alias in your association
+        as: 'position'
       }]
     });
     res.json(users);
@@ -17,8 +18,25 @@ exports.getAllUsers = async (req, res) => {
 };
 
 exports.createUser = async (req, res) => {
+  const { name, email, password, position_id, phone_number, profile_picture } = req.body;
+
   try {
-    const newUser = await User.create(req.body);
+    // Hash the password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      position_id,
+      phone_number,
+      profile_picture,
+      created_by: 1,
+      updated_by: 1,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
     res.status(201).json(newUser);
   } catch (err) {
     res.status(500).json({ error: err.message });
