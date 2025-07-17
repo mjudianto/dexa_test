@@ -2,6 +2,8 @@ const db = require('../models');
 const User = db.MasterUser;
 const Position = db.MasterPosition; 
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -69,15 +71,44 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const id = req.params.id;
-    const [updated] = await User.update(req.body, { where: { id } });
+
+    const existingUser = await User.findByPk(id);
+    if (!existingUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    const payload = {
+      ...req.body,
+      updated_by: req.user.id,       // assumes authMiddleware sets req.user
+      updated_at: new Date()         // current timestamp
+    };
+
+    if (req.file) {
+      payload.profile_picture = req.file.filename;
+      
+      const oldFilename = existingUser.profile_picture;
+
+      if (oldFilename) {
+        const oldFilePath = path.join(__dirname, '../uploads', oldFilename);
+        fs.unlink(oldFilePath, (err) => {
+          if (err && err.code !== 'ENOENT') {
+            console.error('Error deleting old file:', err);
+          }
+        });
+      }
+    }
+
+    const [updated] = await User.update(payload, { where: { id } });
+
     if (updated) {
-      res.json({ message: "User updated" });
+      const updatedUser = await User.findByPk(id);
+      return res.json(updatedUser);
     } else {
-      res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
   } catch (err) {
-    console.log(err.message);
-    res.status(500).json({ error: err.message });
+    console.error(err.message);
+    return res.status(500).json({ error: err.message });
   }
 };
 

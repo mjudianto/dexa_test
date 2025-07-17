@@ -2,64 +2,95 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { User } from '../types/User';
 import { useRouter } from 'next/router';
-import { getUser } from "@/lib/user";
+import { getUser } from '@/lib/user';
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"none" | "info" | "password">("info");
   const [userData, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+
   const router = useRouter();
 
   useEffect(() => {
+    getUser();
     const storedUserData = localStorage.getItem("userData");
+
     if (storedUserData) {
-      setUser(JSON.parse(storedUserData));
+      const parsed = JSON.parse(storedUserData);
+      setUser(parsed);
+
+      if (parsed.profile_picture) {
+        setPreview(`http://localhost:5050/uploads/${parsed.profile_picture}`);
+      }
     }
   }, []);
+
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (userData) {
-      setUser((prevData) => ({
-        ...prevData!,
-        [name]: value,
-      }));
+      setUser(prev => ({ ...prev!, [name]: value }));
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreview(url);
+      setUser(prev => prev ? ({ ...prev, profile_file: file }) : prev);
     }
   };
 
   const handleSaveChanges = async () => {
     if (!userData) return;
-
     const token = localStorage.getItem("authToken");
-
     setLoading(true);
-    try {
-      const res = await fetch(`http://localhost:5050/api/users/${userData.id}`, {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
-      });
 
-      if (!res.ok) {
-        throw new Error("Failed to update profile");
-      }
+    const form = new FormData();
+    form.append("name", userData.name);
+    form.append("phone_number", userData.phone_number || "");
+    if ((userData as any).profile_file) {
+      form.append("profile_file", (userData as any).profile_file);
+    }
+
+    try {
+      const res = await fetch(
+        `http://localhost:5050/api/users/${userData.id}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: form,
+        }
+      );
+      if (!res.ok) throw new Error((await res.json()).message);
 
       await getUser();
+
+      const storedUserData = localStorage.getItem("userData");
+    
+      if (storedUserData) {
+        const parsed = JSON.parse(storedUserData);
+        setUser(parsed);
+
+        if (parsed.profile_picture) {
+          setPreview(`http://localhost:5050/uploads/${parsed.profile_picture}`);
+        }
+      }
+
       alert("Profile updated successfully!");
-    } catch (err) {
-      console.error("Error during profile update:", err);
-      alert("Failed to update profile.");
+
+    } catch (err: any) {
+      alert(`Failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleHomeClick = () => {
-    router.push("/");
-  };
+  const handleHomeClick = () => router.push("/");
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
@@ -80,22 +111,21 @@ export default function ProfilePage() {
         <button
           onClick={handleHomeClick}
           className="absolute right-6 border border-white text-white font-semibold text-l px-4 py-2 rounded-full hover:bg-white hover:text-black transition"
-        >
-          Back To Home
-        </button>
+        >Back To Home</button>
       </nav>
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
         <div className="bg-white rounded-2xl shadow-md overflow-hidden w-full">
           <div className="h-24 bg-gray-100 w-full" />
           <div className="flex justify-center -mt-12">
-            {userData?.profile_picture ? (
+            {preview ? (
               <Image
-                src={userData?.profile_picture}
-                alt={userData.name.charAt(0)}
+                src={preview}
+                alt="Profile Preview"
                 width={80}
                 height={80}
                 className="rounded-full border-4 border-white object-cover shadow"
+                unoptimized
               />
             ) : (
               <div className="w-20 h-20 bg-gray-300 rounded-full border-4 border-white flex items-center justify-center text-white text-2xl font-bold shadow">
@@ -122,20 +152,12 @@ export default function ProfilePage() {
           <div className="mt-4 px-6 pb-4 flex flex-col gap-2">
             <button
               onClick={() => setActiveTab("info")}
-              className={`rounded-full px-4 py-2 text-sm font-medium w-full text-left transition ${
-                activeTab === "info" ? "bg-red-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Edit Profile
-            </button>
+              className={`rounded-full px-4 py-2 text-sm font-medium w-full text-left transition ${activeTab === "info" ? "bg-red-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+            >Edit Profile</button>
             <button
               onClick={() => setActiveTab("password")}
-              className={`rounded-full px-4 py-2 text-sm font-medium w-full text-left transition ${
-                activeTab === "password" ? "bg-red-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Change Password
-            </button>
+              className={`rounded-full px-4 py-2 text-sm font-medium w-full text-left transition ${activeTab === "password" ? "bg-red-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+            >Change Password</button>
           </div>
         </div>
 
@@ -178,18 +200,22 @@ export default function ProfilePage() {
                   <div>
                     <label className="block text-sm font-medium mb-2">Profile Photo</label>
                     <div className="w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center p-6 text-gray-500 cursor-pointer">
-                      <span className="flex flex-col items-center">
-                        <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 16l5-5m0 0l5 5m-5-5v12" />
-                        </svg>
-                        Upload Image
-                      </span>
+                      <input
+                        type="file"
+                        name="profile"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="w-full bg-gray-100 border rounded px-3 py-2 text-gray-600"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
               <div className="mt-6 text-right">
-                <button onClick={handleSaveChanges} className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">Save Changes</button>
+                <button
+                  onClick={handleSaveChanges}
+                  className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700"
+                >{loading ? 'Saving...' : 'Save Changes'}</button>
               </div>
             </>
           )}
