@@ -14,7 +14,21 @@ exports.getAllAttendance = async (req, res) => {
         attributes: ['id', 'name', 'email'], // Include relevant user info
       }],
     });
-    res.status(200).json(attendances);  // Return all attendance records
+
+    // Group attendance by user ID
+    const groupedByUserId = attendances.reduce((group, attendance) => {
+      const userId = attendance.user.id;
+      if (!group[userId]) {
+        group[userId] = {
+          user: attendance.user, // Store user details
+          records: [] // Store their attendance records
+        };
+      }
+      group[userId].records.push(attendance);
+      return group;
+    }, {});
+
+    res.status(200).json(groupedByUserId);  // Return all attendance records
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

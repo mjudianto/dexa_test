@@ -6,6 +6,7 @@ import { MasterAttendance } from '../types/Attendance';
 import { User } from '../types/User';
 import { format } from "date-fns";
 import { getUserAttendance, checkInAttendance, checkOutAttendance } from "@/lib/attendance";
+import { isTokenExpired } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,9 +30,15 @@ export default function HomePage() {
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
+
     if (!token) {
       router.push("/login");
     } else {
+      if (isTokenExpired(token)) {
+        localStorage.removeItem("authToken");
+        router.push("/login");
+      }
+
       const storedUserData = JSON.parse(localStorage.getItem("userData") || '{}');
       if (storedUserData) {
         setUserData(storedUserData);

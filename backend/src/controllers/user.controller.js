@@ -4,6 +4,7 @@ const Position = db.MasterPosition;
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
+const admin = require('firebase-admin');
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -13,6 +14,7 @@ exports.getAllUsers = async (req, res) => {
         as: 'position'
       }]
     });
+
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -35,7 +37,7 @@ exports.getUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(user); // Return the found user
+    res.json(user); 
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -102,6 +104,18 @@ exports.updateUser = async (req, res) => {
 
     if (updated) {
       const updatedUser = await User.findByPk(id);
+      
+      const message = {
+        notification: {
+          title: 'Profile Updated',
+          body: `User ${updatedUser.name} has updated their profile.`,
+        },
+        topic: 'admin_notifications', // A specific topic for admins
+      };
+
+      // Send the notification to admin
+      await admin.messaging().send(message);
+
       return res.json(updatedUser);
     } else {
       return res.status(404).json({ message: "User not found" });

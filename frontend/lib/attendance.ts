@@ -23,6 +23,25 @@ export async function getUserAttendance() {
   localStorage.setItem("attendanceData", JSON.stringify(attendanceData));
 }
 
+export async function getAllUserAttendance() {
+  const token = localStorage.getItem("authTokenAdmin");
+
+  const attendanceRes = await fetch(`http://localhost:5050/api/attendance`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
+    }
+  });
+
+  if (!attendanceRes.ok) {
+    throw new Error("Failed to fetch attendance data");
+  }
+
+  const attendanceData = await attendanceRes.json();
+  localStorage.setItem("attendanceData", JSON.stringify(attendanceData));
+}
+
 export async function checkInAttendance() {
   const storedUserData = JSON.parse(localStorage.getItem("userData") || '{}');
   

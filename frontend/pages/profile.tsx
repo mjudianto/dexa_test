@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { User } from '../types/User';
 import { useRouter } from 'next/router';
 import { getUser } from '@/lib/user';
+import { isTokenExpired } from "@/lib/auth";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"none" | "info" | "password">("info");
@@ -18,6 +19,13 @@ export default function ProfilePage() {
   const router = useRouter();
 
   useEffect(() => {
+    const token = localStorage.getItem("authToken");
+
+    if (isTokenExpired(token)) {
+      localStorage.removeItem("authToken");
+      router.push("/login");
+    }
+
     getUser();
     const storedUserData = localStorage.getItem("userData");
 
