@@ -34,29 +34,29 @@ export default function HomePage() {
 
     fetchAttendance();
 
-    Notification.requestPermission().then(permission => {
-      if (permission === "granted") {
-        getFCMToken();
-      } else {
-        console.log("Permission denied.");
-      }
-    });
+    // Notification.requestPermission().then(permission => {
+    //   if (permission === "granted") {
+    //     getFCMToken();
+    //   } else {
+    //     console.log("Permission denied.");
+    //   }
+    // });
 
   }, [router]);
 
-  const getFCMToken = async () => {
-    try {
-      const currentToken = await messaging.getToken();
-      if (currentToken) {
-        console.log("FCM Token:", currentToken);
-        // Store this token to send notifications
-      } else {
-        console.log("No FCM token available.");
-      }
-    } catch (error) {
-      console.error("Error getting FCM token:", error);
-    }
-  };
+  // const getFCMToken = async () => {
+  //   try {
+  //     const currentToken = await messaging.getToken();
+  //     if (currentToken) {
+  //       console.log("FCM Token:", currentToken);
+  //       // Store this token to send notifications
+  //     } else {
+  //       console.log("No FCM token available.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error getting FCM token:", error);
+  //   }
+  // };
 
   const fetchAttendance = async () => {
     await getAllUserAttendance();

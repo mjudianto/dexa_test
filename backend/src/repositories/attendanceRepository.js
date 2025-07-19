@@ -5,14 +5,40 @@ const { Op } = require('sequelize');
 
 // Fetch all attendance records
 exports.getAllAttendance = async () => {
-  return Attendance.findAll({
-    include: [{
-      model: User,
-      as: 'user',
-      attributes: ['id', 'name', 'email'],
-    }],
-  });
+  try {
+    // Await the result of findAll to get the actual data
+    const attendances = await Attendance.findAll({
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'name', 'email'],
+      }],
+    });
+    
+    // Group by user ID
+    const groupedByUserId = attendances.reduce((group, attendance) => {
+      const userId = attendance.user.id;  // Get the user ID from the attendance record
+      
+      if (!group[userId]) {
+        group[userId] = {
+          user: attendance.user,  // Store user details
+          records: []  // Store their attendance records
+        };
+      }
+      
+      // Push the current attendance record to the group
+      group[userId].records.push(attendance);
+      
+      return group;
+    }, {}); // Initial empty object for grouping
+
+    return groupedByUserId;
+  } catch (error) {
+    console.error('Error fetching attendance data:', error);
+    throw error;  // Throw the error to be handled by the caller
+  }
 };
+
 
 // Fetch attendance by user ID
 exports.getAttendanceByUserId = async (userId) => {
