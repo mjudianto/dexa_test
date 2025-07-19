@@ -1,20 +1,8 @@
-const db = require('../models');
-const User = db.MasterUser;
-const Position = db.MasterPosition; 
-const bcrypt = require('bcryptjs');
-const path = require('path');
-const fs = require('fs');
-const admin = require('firebase-admin');
+const userService = require('../services/userService');
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAll({
-      include: [{
-        model: Position,
-        as: 'position'
-      }]
-    });
-
+    const users = await userService.getAllUsers();
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -22,48 +10,22 @@ exports.getAllUsers = async (req, res) => {
 };
 
 exports.getUser = async (req, res) => {
-  const userId = req.params.id; 
-
+  const userId = req.params.id;
   try {
-    const user = await User.findOne({
-      where: { id: userId },
-      include: [{
-        model: Position,
-        as: 'position'
-      }]
-    });
-
+    const user = await userService.getUserById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    res.json(user); 
+    res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-
 exports.createUser = async (req, res) => {
   const { name, email, password, position_id, phone_number, profile_picture } = req.body;
-
   try {
-    // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      position_id,
-      phone_number,
-      profile_picture,
-      created_by: 1,
-      updated_by: 1,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-
+    const newUser = await userService.createUser(name, email, password, position_id, phone_number, profile_picture);
     res.status(201).json(newUser);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -71,66 +33,23 @@ exports.createUser = async (req, res) => {
 };
 
 exports.updateUser = async (req, res) => {
+  const id = req.params.id;
   try {
-    const id = req.params.id;
-
-    const existingUser = await User.findByPk(id);
-    if (!existingUser) {
+    const updatedUser = await userService.updateUser(id, req.body, req.file, req.user.id);
+    if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }
-    
-    const payload = {
-      ...req.body,
-      updated_by: req.user.id,       // assumes authMiddleware sets req.user
-      updated_at: new Date()         // current timestamp
-    };
-
-    if (req.file) {
-      payload.profile_picture = req.file.filename;
-
-      const oldFilename = existingUser.profile_picture;
-
-      if (oldFilename) {
-        const oldFilePath = path.join(__dirname, '../uploads', oldFilename);
-        fs.unlink(oldFilePath, (err) => {
-          if (err && err.code !== 'ENOENT') {
-            console.error('Error deleting old file:', err);
-          }
-        });
-      }
-    }
-
-    const [updated] = await User.update(payload, { where: { id } });
-
-    if (updated) {
-      const updatedUser = await User.findByPk(id);
-      
-      const message = {
-        notification: {
-          title: 'Profile Updated',
-          body: `User ${updatedUser.name} has updated their profile.`,
-        },
-        topic: 'admin_notifications', // A specific topic for admins
-      };
-
-      // Send the notification to admin
-      await admin.messaging().send(message);
-
-      return res.json(updatedUser);
-    } else {
-      return res.status(404).json({ message: "User not found" });
-    }
+    res.json(updatedUser);
   } catch (err) {
-    console.error(err.message);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
 exports.deleteUser = async (req, res) => {
+  const id = req.params.id;
   try {
-    const id = req.params.id;
-    const deleted = await User.destroy({ where: { id } });
-    if (deleted) {
+    const result = await userService.deleteUser(id);
+    if (result) {
       res.json({ message: "User deleted" });
     } else {
       res.status(404).json({ message: "User not found" });
@@ -143,16 +62,10 @@ exports.deleteUser = async (req, res) => {
 exports.updatePassword = async (req, res) => {
   const { id } = req.params;
   const { currentPassword, newPassword } = req.body;
-
-  const user = await User.findByPk(id);
-  if (!user) return res.status(404).json({ message: "User not found" });
-
-  const valid = await bcrypt.compare(currentPassword, user.password);
-  if (!valid) return res.status(400).json({ message: "Current password is incorrect" });
-
-  const hashed = await bcrypt.hash(newPassword, 10);
-  await User.update({ password: hashed }, { where: { id } });
-
-  res.json({ message: "Password updated successfully" });
+  try {
+    const result = await userService.updatePassword(id, currentPassword, newPassword);
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
-
