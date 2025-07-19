@@ -5,8 +5,14 @@ const authRoutes = require('./routes/auth.routes');
 const attendanceRoutes = require('./routes/attendance.routes');
 const path = require('path');
 const app = express();
-const admin = require('firebase-admin');
+const Redis = require('ioredis');  // Import Redis
 
+// Redis connection setup
+const redis = new Redis({
+  host: process.env.REDIS_HOST || 'localhost',  // Use environment variables for flexibility
+  port: process.env.REDIS_PORT || 6379,
+  password: process.env.REDIS_PASSWORD || null,  // Optionally set if Redis is password-protected
+});
 
 // Middleware
 app.use(cors());
@@ -20,12 +26,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes); 
 app.use('/api/attendance', attendanceRoutes);
 
-// Replace the path with the actual path to the service account key file you downloaded
-const serviceAccount = require('../dexa-ee8fe-firebase-adminsdk-fbsvc-fe445752b4.json');
-
-// Initialize Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+// Sample Redis test to check connection
+redis.ping((err, result) => {
+  if (err) {
+    console.error('Redis connection failed:', err);
+  } else {
+    console.log('Redis connected:', result);  // Should print "PONG"
+  }
 });
 
 module.exports = app;

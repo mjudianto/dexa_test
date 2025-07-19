@@ -1,4 +1,4 @@
-const userRepository = require('../repositories/userRepository');
+const userRepository = require('../repositories/user.repository');
 const bcrypt = require('bcryptjs');
 const admin = require('firebase-admin');
 const path = require('path');
@@ -16,7 +16,7 @@ exports.getUserById = async (userId) => {
   try {
     return await userRepository.getUserById(userId);
   } catch (err) {
-    throw new Error('Error fetching user');
+    throw new Error(err);
   }
 };
 

@@ -1,4 +1,4 @@
-const attendanceRepository = require('../repositories/attendanceRepository');
+const attendanceRepository = require('../repositories/attendance.repository');
 const moment = require('moment');
 const { Op } = require('sequelize');
 

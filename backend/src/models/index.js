@@ -19,9 +19,9 @@ db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
 // Models
-db.MasterPosition = require("./master_position.js")(sequelize, DataTypes);
-db.MasterUser = require("./master_user.js")(sequelize, DataTypes);
-db.Attendance = require("./master_attendance.js")(sequelize, DataTypes);
+db.MasterPosition = require("./position.model.js")(sequelize, DataTypes);
+db.MasterUser = require("./user.model.js")(sequelize, DataTypes);
+db.Attendance = require("./attendance.model.js")(sequelize, DataTypes);
 
 // Associations
 db.MasterUser.belongsTo(db.MasterPosition, {
@@ -33,7 +33,5 @@ db.Attendance.belongsTo(db.MasterUser, {
   foreignKey: "user_id",
   as: "user",
 });
-
-console.log(db.Attendance)
 
 module.exports = db;
