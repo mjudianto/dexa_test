@@ -68,7 +68,7 @@ export async function checkInAttendance() {
 
     if (!attendanceRes.ok) {
       const responseBody = await attendanceRes.json();
-      alert(responseBody.message); // Show success alert
+      alert(responseBody.error); // Show success alert
     }
     else {
       alert("Check-in successful!"); // Show success alert
@@ -105,7 +105,7 @@ export async function checkOutAttendance() {
 
     if (!attendanceRes.ok) {
       const responseBody = await attendanceRes.json();
-      alert(responseBody.message); // Show success alert
+      alert(responseBody.error); // Show success alert
     }
     else {
       alert("Check-out successful!"); // Show success alert
