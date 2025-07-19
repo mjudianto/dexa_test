@@ -1,11 +1,10 @@
-// pages/login.tsx or app/login/page.tsx
-
 import Image from "next/image";
 import { Geist, Geist_Mono } from "next/font/google";
 import { useState } from "react";
 import Modal from "@/components/Modal";
-import { loginAdmin } from "@/lib/auth"; 
 import { useRouter } from 'next/router'; 
+import { useAuthContext } from "@/context/AuthContext";
+import { loginAdminApi } from "@/lib/auth"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,8 +25,7 @@ export default function Login() {
   const [emailError, setEmailError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loginError, setLoginError] = useState("");
-
-  const router = useRouter(); // useRouter hook for redirection
+  const { loginAdmin } = useAuthContext();  // Access login from AuthContext
 
   const validateEmail = (value: string) => {
     setEmail(value);
@@ -46,9 +44,8 @@ export default function Login() {
     setLoginError("");
 
     try {
-      const userData = await loginAdmin(email, password);
-
-      router.push("/admin/home")
+      const { token, user } = await loginAdminApi(email, password);
+      loginAdmin(token, user);  // Store token and user in context
     } catch (err: any) {
       setLoginError(err.message || "Login failed");
     }

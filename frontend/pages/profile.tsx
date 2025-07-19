@@ -1,13 +1,11 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { User } from '../types/User';
-import { useRouter } from 'next/router';
-import { getUser } from '@/lib/user';
-import { isTokenExpired } from "@/lib/auth";
+import { useRouter } from "next/router";
+import { useAuthContext } from "@/context/AuthContext"; // Use AuthContext to access user and token
+import { updateUserProfile, updateUserPassword } from "@/lib/user"; // Import functions from user lib
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"none" | "info" | "password">("info");
-  const [userData, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -15,36 +13,36 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-
+  // Use context for handling authentication state
+  const { user, token, updateUser } = useAuthContext();
   const router = useRouter();
 
+  // Local state for form values
+  const [formData, setFormData] = useState({
+    name: user?.name || "",
+    phone_number: user?.phone_number || "",
+    email: user?.email || "",
+    profile_file: null as File | null,
+  });
+
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-
-    if (isTokenExpired(token)) {
-      localStorage.removeItem("authToken");
-      router.push("/login");
-    }
-
-    getUser();
-    const storedUserData = localStorage.getItem("userData");
-
-    if (storedUserData) {
-      const parsed = JSON.parse(storedUserData);
-      setUser(parsed);
-
-      if (parsed.profile_picture) {
-        setPreview(`http://localhost:5050/uploads/${parsed.profile_picture}`);
+    if (token && user) {
+      if (user.profile_picture) {
+        setPreview(`http://localhost:5050/uploads/${user.profile_picture}`);
       }
+      // Initialize form data
+      setFormData({
+        name: user.name,
+        phone_number: user.phone_number || "",
+        email: user.email,
+        profile_file: null,
+      });
     }
-  }, []);
-
+  }, [token, user]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    if (userData) {
-      setUser(prev => ({ ...prev!, [name]: value }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,50 +50,27 @@ export default function ProfilePage() {
     if (file) {
       const url = URL.createObjectURL(file);
       setPreview(url);
-      setUser(prev => prev ? ({ ...prev, profile_file: file }) : prev);
+      setFormData(prev => ({ ...prev, profile_file: file }));
     }
   };
 
   const handleSaveChanges = async () => {
-    if (!userData) return;
-    const token = localStorage.getItem("authToken");
-    setLoading(true);
+    if (!user || !token) return;
 
+    setLoading(true);
     const form = new FormData();
-    form.append("name", userData.name);
-    form.append("phone_number", userData.phone_number || "");
-    if ((userData as any).profile_file) {
-      form.append("profile_file", (userData as any).profile_file);
+    form.append("name", formData.name);
+    form.append("phone_number", formData.phone_number || "");
+    if (formData.profile_file) {
+      form.append("profile_file", formData.profile_file);
     }
 
     try {
-      const res = await fetch(
-        `http://localhost:5050/api/users/${userData.id}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: form,
-        }
-      );
-      if (!res.ok) throw new Error((await res.json()).message);
+      await updateUserProfile(user.id, token, form);
 
-      await getUser();
-
-      const storedUserData = localStorage.getItem("userData");
-    
-      if (storedUserData) {
-        const parsed = JSON.parse(storedUserData);
-        setUser(parsed);
-
-        if (parsed.profile_picture) {
-          setPreview(`http://localhost:5050/uploads/${parsed.profile_picture}`);
-        }
-      }
+      await updateUser();
 
       alert("Profile updated successfully!");
-
     } catch (err: any) {
       alert(`Failed: ${err.message}`);
     } finally {
@@ -104,9 +79,7 @@ export default function ProfilePage() {
   };
 
   const handleUpdatePassword = async () => {
-    if (!userData) return;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if (!user || !currentPassword || !newPassword || !confirmPassword) {
       alert("Please fill in all password fields.");
       return;
     }
@@ -118,22 +91,8 @@ export default function ProfilePage() {
 
     setPasswordLoading(true);
 
-    const token = localStorage.getItem("authToken");
-
     try {
-      const res = await fetch(`http://localhost:5050/api/users/${userData.id}/password`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
-      });
-
-      if (!res.ok) throw new Error((await res.json()).message);
+      await updateUserPassword(user.id, token, currentPassword, newPassword);
 
       alert("Password updated successfully.");
       setCurrentPassword('');
@@ -146,11 +105,11 @@ export default function ProfilePage() {
     }
   };
 
-
   const handleHomeClick = () => router.push("/");
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
+      {/* Navigation Bar */}
       <nav className="relative bg-gradient-to-r from-[#b0241b] via-[#f24d3c] to-[#bf1e1e] px-6 py-4 flex items-center shadow">
         <div className="hidden sm:flex items-center gap-3">
           <Image
@@ -186,24 +145,24 @@ export default function ProfilePage() {
               />
             ) : (
               <div className="w-20 h-20 bg-gray-300 rounded-full border-4 border-white flex items-center justify-center text-white text-2xl font-bold shadow">
-                {userData?.name.charAt(0)}
+                {user?.name.charAt(0)}
               </div>
             )}
           </div>
           <div className="text-center px-6 py-4">
-            <h2 className="text-lg font-semibold text-blue-600">{userData?.name}</h2>
-            <p className="text-sm text-gray-700">{userData?.position.division}-{userData?.position.description}</p>
+            <h2 className="text-lg font-semibold text-blue-600">{user?.name}</h2>
+            <p className="text-sm text-gray-700">{user?.position.division}-{user?.position.description}</p>
           </div>
           <div className="border-t divide-y">
             <div className="flex justify-between px-6 py-3 text-sm">
               <span className="text-gray-500">Email</span>
-              <span className="text-blue-600 break-all">{userData?.email}</span>
+              <span className="text-blue-600 break-all">{user?.email}</span>
             </div>
           </div>
           <div className="border-t divide-y">
             <div className="flex justify-between px-6 py-3 text-sm">
               <span className="text-gray-500">Phone</span>
-              <span className="text-blue-600 break-all">{userData?.phone_number}</span>
+              <span className="text-blue-600 break-all">{user?.phone_number}</span>
             </div>
           </div>
           <div className="mt-4 px-6 pb-4 flex flex-col gap-2">
@@ -228,7 +187,7 @@ export default function ProfilePage() {
                     <label className="block text-sm font-medium mb-1">Name</label>
                     <input
                       name="name"
-                      value={userData?.name}
+                      value={formData.name}
                       onChange={handleProfileChange}
                       className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-300"
                     />
@@ -237,7 +196,7 @@ export default function ProfilePage() {
                     <label className="block text-sm font-medium mb-1">Phone Number</label>
                     <input
                       name="phone_number"
-                      value={userData?.phone_number ?? ""}
+                      value={formData.phone_number ?? ""}
                       onChange={handleProfileChange}
                       className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:ring-blue-300"
                     />
@@ -246,7 +205,7 @@ export default function ProfilePage() {
                     <label className="block text-sm font-medium mb-1">Email Address</label>
                     <input
                       name="email"
-                      value={userData?.email}
+                      value={formData.email}
                       readOnly
                       className="w-full bg-gray-100 border rounded px-3 py-2 text-gray-600"
                     />
@@ -283,12 +242,12 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Current Password</label>
-                    <input
-                        type="password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full border rounded px-3 py-2"
-                      />                
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">New Password</label>

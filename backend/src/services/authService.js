@@ -1,11 +1,13 @@
 const authRepository = require('../repositories/auth.repository');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const redis = require('../config/redis.config');
 
 const JWT_SECRET = 'f5c2cbc8fcb33f0f17f8f930f03a92a3';
 
 exports.login = async (email, password) => {
   try {
+    await redis.del(`userByEmail:${email}`);
     const user = await authRepository.findUserByEmail(email);
 
     if (!user) {

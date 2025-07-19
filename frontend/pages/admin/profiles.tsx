@@ -1,14 +1,16 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { getUser, getAllUser } from "@/lib/user";
+import { getAllUser } from "@/lib/user";
 import { User } from "../../types/User";
+import { useAuthContext } from "@/context/AuthContext";
 
 export default function ProfilePage() {
-  const [activeTab, setActiveTab] = useState<"none" | "info" | "password">("info");
-  const [userData, setUser] = useState<User | null>(null);
-  const [allUserData, setAllUser] = useState<User[]>([]); // Ensure it's initialized as an array
-  const [editingUser, setEditingUser] = useState<User | null>(null); // Store user data for editing
+  const { user, token, updateUser: updateUserContext } = useAuthContext();
+
+  const [activeTab, setActiveTab] = useState<"info" | "password">("info");
+  const [allUserData, setAllUser] = useState<User[]>([]);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -19,19 +21,22 @@ export default function ProfilePage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {    
-    await getAllUser(); 
-    const storedUsersData = JSON.parse(localStorage.getItem("allUserData") || '[]');
-    if (storedUsersData && Array.isArray(storedUsersData)) {
-      setAllUser(storedUsersData); 
+    if (token) {
+      fetchUsers();
     }
+  }, [token]);
 
-    const storedUserData = JSON.parse(localStorage.getItem("userData") || '{}');
-    if (storedUserData) {
-      setUser(storedUserData);
+  const fetchUsers = async () => {
+    try {
+      await getAllUser();
+
+      const usersJsonString = localStorage.getItem("allUserData");
+      const usersArray = JSON.parse(usersJsonString || '[]');
+
+      setAllUser(usersArray);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      alert("Could not load user data.");
     }
   };
 
@@ -52,10 +57,9 @@ export default function ProfilePage() {
   };
 
   const handleSaveChanges = async () => {
-    if (!editingUser) return;
-    const token = localStorage.getItem("authTokenAdmin");
-    setLoading(true);
+    if (!editingUser || !token) return;
 
+    setLoading(true);
     const form = new FormData();
     form.append("name", editingUser.name);
     form.append("phone_number", editingUser.phone_number || "");
@@ -63,26 +67,22 @@ export default function ProfilePage() {
       form.append("profile_file", (editingUser as any).profile_file);
     }
 
-    console.log(editingUser);
+    const localToken = localStorage.getItem("adminAuthToken");
 
     try {
       const res = await fetch(
         `http://localhost:5050/api/users/${editingUser.id}`,
         {
           method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${localToken}` },
           body: form,
         }
       );
       if (!res.ok) throw new Error((await res.json()).message);
-
+      
       await fetchUsers();
-
       alert("Profile updated successfully!");
-      setEditingUser(null); // Close the modal after saving changes
-
+      setEditingUser(null);
     } catch (err: any) {
       alert(`Failed: ${err.message}`);
     } finally {
@@ -91,33 +91,26 @@ export default function ProfilePage() {
   };
 
   const handleUpdatePassword = async () => {
-    if (!userData) return;
+    if (!loggedInAdmin || !token) return;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
       alert("Please fill in all password fields.");
       return;
     }
-
     if (newPassword !== confirmPassword) {
       alert("New passwords do not match.");
       return;
     }
 
     setPasswordLoading(true);
-
-    const token = localStorage.getItem("authToken");
-
     try {
-      const res = await fetch(`http://localhost:5050/api/users/${userData.id}/password`, {
+      const res = await fetch(`http://localhost:5050/api/users/${loggedInAdmin.id}/password`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
 
       if (!res.ok) throw new Error((await res.json()).message);
@@ -136,8 +129,13 @@ export default function ProfilePage() {
   const handleHomeClick = () => router.push("/admin/home");
 
   const handleEditUser = (user: User) => {
-    setEditingUser(user); // Set the selected user to edit
-    setActiveTab("info"); // Switch to the "info" tab to show the edit form
+    setEditingUser(user);
+    if (user.profile_picture) {
+      setPreview(`http://localhost:5050/uploads/${user.profile_picture}`);
+    } else {
+      setPreview(null);
+    }
+    setActiveTab("info");
   };
 
   return (
@@ -175,7 +173,7 @@ export default function ProfilePage() {
               <tbody>
                 {allUserData.map((user) => (
                   <tr key={user.id} className="border-b">
-                    <td className="px-4 py-2 font-medium text-gray-900">{user?.name}</td> {/* User Name */}
+                    <td className="px-4 py-2 font-medium text-gray-900">{user?.name}</td>
                     <td className="px-4 py-2">
                       <button
                         onClick={() => handleEditUser(user)}
@@ -183,7 +181,7 @@ export default function ProfilePage() {
                       >
                         Edit
                       </button>
-                    </td> {/* Edit Button */}
+                    </td>
                   </tr>
                 ))}
               </tbody>

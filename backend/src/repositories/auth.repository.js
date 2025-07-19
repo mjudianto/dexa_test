@@ -7,6 +7,8 @@ const { getFromCache, setToCache } = require('../utils/redisCache');  // Import 
 exports.findUserByEmail = async (email) => {
   const cacheKey = `userByEmail:${email}`;
   const cachedUser = await getFromCache(cacheKey);
+
+  console.log(cachedUser);
   if (cachedUser) return cachedUser;
   
   const user = await User.findOne({ where: { email } });

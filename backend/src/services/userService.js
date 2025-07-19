@@ -60,18 +60,9 @@ exports.updateUser = async (id, payload, file, userId) => {
     // Update the user
     const updatedUser = await userRepository.updateUser(id, updatedPayload);
 
-    // Send push notification
-    // const message = {
-    //   notification: {
-    //     title: 'Profile Updated',
-    //     body: `User ${updatedUser.name} has updated their profile.`,
-    //   },
-    //   topic: 'admin_notifications',
-    // };
-    // await admin.messaging().send(message);
-
     return updatedUser;
   } catch (err) {
+    console.log(err);
     throw new Error('Error updating user');
   }
 };

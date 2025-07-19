@@ -4,9 +4,10 @@ import { getAllUserAttendance } from "@/lib/attendance";
 import AttendanceTable from "@/components/AttendanceTable";
 import Image from "next/image";
 import { User } from '@/types/User';
-import { isTokenExpired } from "@/lib/auth";
+import { useAuthContext } from "@/context/AuthContext"; 
 
 export default function HomePage() {
+  const { user, token } = useAuthContext(); // Use AuthContext to get user and token
   const [attendanceData, setAttendanceData] = useState({});
   const [userData, setUserData] = useState<User | null>(null);
   const [fromDate, setFromDate] = useState("");
@@ -17,53 +18,17 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("authTokenAdmin");
-
-    if (!token) {
-      router.push("/login");
-    }
-    if (isTokenExpired(token)) {
-      localStorage.removeItem("authTokenAdmin");
-      router.push("/admin/login");
-    }
-          
-    const storedUserData = JSON.parse(localStorage.getItem("userData") || '{}');
-    if (storedUserData) {
-      setUserData(storedUserData);
+    if (token) {
+      fetchAttendance();
     }
 
-    fetchAttendance();
-
-    // Notification.requestPermission().then(permission => {
-    //   if (permission === "granted") {
-    //     getFCMToken();
-    //   } else {
-    //     console.log("Permission denied.");
-    //   }
-    // });
-
-  }, [router]);
-
-  // const getFCMToken = async () => {
-  //   try {
-  //     const currentToken = await messaging.getToken();
-  //     if (currentToken) {
-  //       console.log("FCM Token:", currentToken);
-  //       // Store this token to send notifications
-  //     } else {
-  //       console.log("No FCM token available.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error getting FCM token:", error);
-  //   }
-  // };
+  }, [token, router]);
 
   const fetchAttendance = async () => {
-    await getAllUserAttendance();
-    const storedAttendanceData = JSON.parse(localStorage.getItem("attendanceData") || '{}');
-    setAttendanceData(storedAttendanceData);
+    const attendance = await getAllUserAttendance(token ?? "");
+    setAttendanceData(attendance);
 
-    console.log
+    console.log(attendance);
   };
 
   // Helper function to format dates
@@ -172,9 +137,9 @@ export default function HomePage() {
                             className="rounded-full"
                           />
                           <div>
-                            <p className="font-medium text-gray-800">{userData?.name}</p>
-                            <p className="text-sm text-gray-500">{userData?.email}</p>
-                            <p className="text-sm text-gray-500">{userData?.position?.division} - {userData?.position?.description}</p>
+                            <p className="font-medium text-gray-800">{user?.name}</p>
+                            <p className="text-sm text-gray-500">{user?.email}</p>
+                            <p className="text-sm text-gray-500">{user?.position?.division} - {user?.position?.description}</p>
                           </div>
                         </div>
                       </div>

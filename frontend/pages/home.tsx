@@ -1,12 +1,11 @@
 import Image from "next/image";
 import { Geist, Geist_Mono } from "next/font/google";
 import { useState, useEffect } from "react";
-import { useRouter } from 'next/router';
-import { MasterAttendance } from '../types/Attendance';
-import { User } from '../types/User';
+import { useRouter } from "next/router";
+import { MasterAttendance } from "../types/Attendance";
+import { useAuthContext } from "@/context/AuthContext"; // Use AuthContext to access user and token
 import { format } from "date-fns";
-import { getUserAttendance, checkInAttendance, checkOutAttendance } from "@/lib/attendance";
-import { isTokenExpired } from "@/lib/auth";
+import { getUserAttendance, checkInAttendance, checkOutAttendance } from "@/lib/attendance"; // API functions
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,107 +18,93 @@ const geistMono = Geist_Mono({
 });
 
 export default function HomePage() {
-  const [userData, setUserData] = useState<User | null>(null);
+  const { user, token } = useAuthContext(); // Use AuthContext to get user and token
   const [attendanceData, setAttendanceData] = useState<MasterAttendance[]>([]);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const dealsPerPage = 5; // Custom number of records per page
+  const dealsPerPage = 5; 
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-
-    if (!token) {
-      router.push("/login");
-    } else {
-      if (isTokenExpired(token)) {
-        localStorage.removeItem("authToken");
-        router.push("/login");
-      }
-
-      const storedUserData = JSON.parse(localStorage.getItem("userData") || '{}');
-      if (storedUserData) {
-        setUserData(storedUserData);
-      }
-
+    if (token) {
       fetchAttendance();
     }
-  }, [router]);
+  }, [token, router]);
 
+  // Fetch attendance data
   const fetchAttendance = async () => {
-    await getUserAttendance();
-
-    const storedAttendanceData = JSON.parse(localStorage.getItem("attendanceData") || '{}');
-
-    if (storedAttendanceData) {
-      // Sort the attendance data so today's check-ins are at the top
-      const sortedAttendanceData = storedAttendanceData.sort((a: MasterAttendance, b: MasterAttendance) => {
-        const aCheckIn = new Date(a.check_in ?? "").getTime();
-        const bCheckIn = new Date(b.check_in ?? "").getTime();
-        return bCheckIn - aCheckIn;
-      });
-      
-      setAttendanceData(sortedAttendanceData);
+    try {
+      const attendance = await getUserAttendance(user.id ?? "", token ?? "");
+      setAttendanceData(attendance);
+    } catch (error) {
+      console.error("Error fetching attendance:", error);
     }
   };
 
+  // Format date to yyyy-MM-dd
   const formatDate = (date: string | null) => {
-    if (!date) return ""; 
+    if (!date) return "";
     const parsedDate = new Date(date);
     if (isNaN(parsedDate.getTime())) {
       return "";
     }
-    return format(parsedDate, 'yyyy-MM-dd');
+    return format(parsedDate, "yyyy-MM-dd");
   };
 
+  // Format full date and time (yyyy-MM-dd HH:mm)
   const formatFullDate = (date: string | null) => {
-    if (!date) return ""; 
+    if (!date) return "";
     const parsedDate = new Date(date);
     if (isNaN(parsedDate.getTime())) {
       return "";
     }
-    return format(parsedDate, 'yyyy-MM-dd HH:mm'); 
+    return format(parsedDate, "yyyy-MM-dd HH:mm");
   };
 
+  // Filter attendance data based on date and search criteria
   const filterAttendanceByDate = () => {
     let filtered = [...attendanceData];
 
-    // Date filtering for From Date and To Date
+    // Filter by From Date
     if (fromDate) {
       filtered = filtered.filter((attendance) => formatDate(attendance.check_in) >= fromDate);
     }
 
+    // Filter by To Date
     if (toDate) {
       filtered = filtered.filter((attendance) => formatDate(attendance.check_in) <= toDate);
     }
 
-    // Search filtering (only by date, ignoring time)
+    // Search by date
     if (search) {
-      filtered = filtered.filter((attendance) =>
-        formatDate(attendance.check_in).includes(search) || formatDate(attendance.check_out).includes(search)
+      filtered = filtered.filter(
+        (attendance) =>
+          formatDate(attendance.check_in).includes(search) || formatDate(attendance.check_out).includes(search)
       );
     }
 
     return filtered;
   };
 
+  // Handle Check-In action
   const handleCheckIn = async () => {
     try {
-      await checkInAttendance();
-      fetchAttendance();
-    } catch (err) {
-      console.error("Error during check-in:", err);
+      await checkInAttendance(user?.id ?? "", token ?? "");
+      fetchAttendance(); // Refresh the attendance after check-in
+    } catch (error) {
+      console.error("Error during check-in:", error);
     }
   };
 
+  // Handle Check-Out action
   const handleCheckOut = async () => {
     try {
-      await checkOutAttendance();
-      fetchAttendance();
-    } catch (err) {
-      console.error("Error during check-out:", err);
+      await checkOutAttendance(user?.id ?? "", token ?? "");
+      fetchAttendance(); // Refresh the attendance after check-out
+    } catch (error) {
+      console.error("Error during check-out:", error);
     }
   };
 
@@ -132,13 +117,13 @@ export default function HomePage() {
     currentPage * dealsPerPage
   );
 
-  // Handle pagination
+  // Handle page navigation
   const handlePrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
   const handleNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
 
   return (
     <div className={`${geistSans.className} ${geistMono.className} font-sans bg-gray-100 min-h-screen`}>
-      
+      {/* Navbar */}
       <nav className="relative bg-gradient-to-r from-[#b0241b] via-[#f24d3c] to-[#bf1e1e] px-6 py-4 flex items-center shadow">
         <div className="hidden sm:flex items-center gap-3">
           <Image
@@ -149,7 +134,6 @@ export default function HomePage() {
             className="object-contain"
           />
         </div>
-
         <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
           <span className="text-white font-semibold text-xl tracking-wide text-center">
             Welcome to Dexa Attendance
@@ -157,8 +141,10 @@ export default function HomePage() {
         </div>
       </nav>
 
+      {/* Main Content */}
       <div className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Profile Section */}
           <div className="space-y-6 md:col-span-1">
             <div className="bg-white rounded-xl shadow p-5">
               <h2 className="text-lg font-semibold mb-4">Profile</h2>
@@ -171,25 +157,35 @@ export default function HomePage() {
                   className="rounded-full"
                 />
                 <div>
-                  <p className="font-medium text-gray-800">{userData?.name}</p>
-                  <p className="text-sm text-gray-500">{userData?.email}</p>
-                  <p className="text-sm text-gray-500">{userData?.position?.division} - {userData?.position?.description}</p>
+                  <p className="font-medium text-gray-800">{user?.name}</p>
+                  <p className="text-sm text-gray-500">{user?.email}</p>
+                  <p className="text-sm text-gray-500">{user?.position?.division} - {user?.position?.description}</p>
                 </div>
               </div>
               <div className="mt-6 space-x-4">
-                <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded" onClick={handleCheckIn}>Check In</button>
-                <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded" onClick={handleCheckOut}>Check Out</button>
+                <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded" onClick={handleCheckIn}>
+                  Check In
+                </button>
+                <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded" onClick={handleCheckOut}>
+                  Check Out
+                </button>
               </div>
             </div>
 
+            {/* Quick Menu */}
             <div className="bg-white rounded-xl shadow p-5">
               <h2 className="text-lg font-semibold mb-4">Quick Menu</h2>
               <ul className="space-y-3">
-                <li><a href="/profile" className="text-blue-600 hover:underline">View Profile Details</a></li>
+                <li>
+                  <a href="/profile" className="text-blue-600 hover:underline">
+                    View Profile Details
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
 
+          {/* Attendance Summary Section */}
           <div className="md:col-span-2 bg-white rounded-xl shadow p-5 overflow-auto">
             <h2 className="text-lg font-semibold mb-4">Attendance Summary</h2>
 
@@ -229,7 +225,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Table for Attendance Data */}
+            {/* Attendance Data Table */}
             <table className="w-full text-sm text-left text-gray-700">
               <thead className="text-xs uppercase bg-gray-100">
                 <tr>
@@ -249,9 +245,23 @@ export default function HomePage() {
 
             {/* Pagination */}
             <div className="flex justify-between items-center mt-6">
-              <button onClick={handlePrevPage} disabled={currentPage === 1} className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">Previous</button>
-              <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
-              <button onClick={handleNextPage} disabled={currentPage === totalPages} className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50">Next</button>
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+              >
+                Next
+              </button>
             </div>
           </div>
         </div>

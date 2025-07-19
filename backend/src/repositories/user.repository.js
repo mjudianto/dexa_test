@@ -3,6 +3,7 @@ const db = require('../models');
 const User = db.MasterUser;
 const Position = db.MasterPosition;
 const { getFromCache, setToCache } = require('../utils/redisCache');  // Import Redis cache functions
+const redis = require('../config/redis.config');
 
 exports.getAllUsers = async () => {
   const cacheKey = 'allUsers';  // Cache key for all users
@@ -80,7 +81,6 @@ exports.deleteUser = async (id) => {
 exports.updatePassword = async (id, hashedPassword) => {
   const updatedPassword = await User.update({ password: hashedPassword }, { where: { id } });
   
-  // Clear the cached user so that it is refreshed when requested again
   await redis.del(`user:${id}`);
   return updatedPassword;
 };

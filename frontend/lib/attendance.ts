@@ -1,13 +1,6 @@
-export async function getUserAttendance() {
-  const storedUserData = JSON.parse(localStorage.getItem("userData") || '{}');
-  
-  if (storedUserData) {
-    localStorage.setItem("userData", JSON.stringify(storedUserData));
-  }
-
-  const token = localStorage.getItem("authToken");
-
-  const attendanceRes = await fetch(`http://localhost:5050/api/attendance/${storedUserData.id}`, {
+// API functions should receive user and token as arguments
+export async function getUserAttendance(userId: string, token: string) {
+  const attendanceRes = await fetch(`http://localhost:5050/api/attendance/${userId}`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${token}`,
@@ -20,12 +13,10 @@ export async function getUserAttendance() {
   }
 
   const attendanceData = await attendanceRes.json();
-  localStorage.setItem("attendanceData", JSON.stringify(attendanceData));
+  return attendanceData;
 }
 
-export async function getAllUserAttendance() {
-  const token = localStorage.getItem("authTokenAdmin");
-
+export async function getAllUserAttendance(token: string) {
   const attendanceRes = await fetch(`http://localhost:5050/api/attendance`, {
     method: "GET",
     headers: {
@@ -39,21 +30,12 @@ export async function getAllUserAttendance() {
   }
 
   const attendanceData = await attendanceRes.json();
-  localStorage.setItem("attendanceData", JSON.stringify(attendanceData));
+  return attendanceData;
 }
 
-export async function checkInAttendance() {
-  const storedUserData = JSON.parse(localStorage.getItem("userData") || '{}');
-  
-  if (!storedUserData || !storedUserData.id) {
-    throw new Error("User data is missing or invalid");
-  }
-
-  const token = localStorage.getItem("authToken");
-
-  // Prepare the request body
+export async function checkInAttendance(userId: string, token: string) {
   const checkInData = {
-    user_id: storedUserData.id
+    user_id: userId
   };
 
   try {
@@ -68,9 +50,8 @@ export async function checkInAttendance() {
 
     if (!attendanceRes.ok) {
       const responseBody = await attendanceRes.json();
-      alert(responseBody.error); // Show success alert
-    }
-    else {
+      alert(responseBody.error); // Show error alert
+    } else {
       alert("Check-in successful!"); // Show success alert
     }
 
@@ -79,18 +60,9 @@ export async function checkInAttendance() {
   }
 }
 
-export async function checkOutAttendance() {
-  const storedUserData = JSON.parse(localStorage.getItem("userData") || '{}');
-  
-  if (!storedUserData || !storedUserData.id) {
-    throw new Error("User data is missing or invalid");
-  }
-
-  const token = localStorage.getItem("authToken");
-
-  // Prepare the request body
+export async function checkOutAttendance(userId: string, token: string) {
   const checkInData = {
-    user_id: storedUserData.id
+    user_id: userId
   };
 
   try {
@@ -105,14 +77,12 @@ export async function checkOutAttendance() {
 
     if (!attendanceRes.ok) {
       const responseBody = await attendanceRes.json();
-      alert(responseBody.error); // Show success alert
-    }
-    else {
+      alert(responseBody.error); // Show error alert
+    } else {
       alert("Check-out successful!"); // Show success alert
     }
 
   } catch (err) {
-    console.error("Error during check-in:", err);
+    console.error("Error during check-out:", err);
   }
 }
-
