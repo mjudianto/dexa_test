@@ -17,10 +17,11 @@ export async function getUserAttendance(userId: string, token: string) {
 }
 
 export async function getAllUserAttendance(token: string) {
+  const localToken = localStorage.getItem('adminAuthToken');
   const attendanceRes = await fetch(`http://localhost:5050/api/attendance`, {
     method: "GET",
     headers: {
-      "Authorization": `Bearer ${token}`,
+      "Authorization": `Bearer ${localToken}`,
       "Content-Type": "application/json"
     }
   });

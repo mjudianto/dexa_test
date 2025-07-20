@@ -13,12 +13,12 @@ const redis = new Redis({
 });
 
 // Log the connection status for debugging
-redis.on('connect', () => {
-  console.log('Connected to Redis');
-});
-
-redis.on('error', (err) => {
-  console.error('Redis connection error:', err);
+redis.ping((err, result) => {
+  if (err) {
+    console.error('Redis connection failed:', err);
+  } else {
+    console.log('Redis connected successfully:', result); // Should print "PONG"
+  }
 });
 
 // Export the Redis client so it can be used elsewhere

@@ -1,4 +1,7 @@
 const userService = require('../services/userService');
+const redis = require('../config/redis.config'); // Assuming this is the path to your client
+
+const STREAM_CHANNEL = 'message-stream';
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -36,6 +39,15 @@ exports.updateUser = async (req, res) => {
   const id = req.params.id;
   try {
     const updatedUser = await userService.updateUser(id, req.body, req.file, req.user.id);
+
+    try {
+      const message = `User '${updatedUser.name}' profile has been updated.`;
+      await redis.publish(STREAM_CHANNEL, message);
+      console.log(`Published to ${STREAM_CHANNEL}: ${message}`);
+    } catch (redisError) {
+      console.error("Failed to publish update to Redis:", redisError);
+    }
+
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }

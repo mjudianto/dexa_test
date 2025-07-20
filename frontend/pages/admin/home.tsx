@@ -5,9 +5,10 @@ import AttendanceTable from "@/components/AttendanceTable";
 import Image from "next/image";
 import { User } from '@/types/User';
 import { useAuthContext } from "@/context/AuthContext"; 
+import { useNotifications } from '@/hooks/useNotifications';
 
 export default function HomePage() {
-  const { user, token } = useAuthContext(); // Use AuthContext to get user and token
+  const { admin, token } = useAuthContext(); // Use AuthContext to get user and token
   const [attendanceData, setAttendanceData] = useState({});
   const [userData, setUserData] = useState<User | null>(null);
   const [fromDate, setFromDate] = useState("");
@@ -17,19 +18,27 @@ export default function HomePage() {
   const dealsPerPage = 5;
   const router = useRouter();
 
+  const fetchAttendance = async () => {
+    const attendance = await getAllUserAttendance(token ?? "");
+    setAttendanceData(attendance);
+  };
+
+  useNotifications((message) => {
+    // This function will run every time a message is received
+    
+    // Show a browser alert with the message
+    alert(`New Notification: ${message}`);
+    
+    // Optionally, re-fetch the attendance data to keep the page live
+    fetchAttendance();
+  });
+
   useEffect(() => {
     if (token) {
       fetchAttendance();
     }
 
   }, [token, router]);
-
-  const fetchAttendance = async () => {
-    const attendance = await getAllUserAttendance(token ?? "");
-    setAttendanceData(attendance);
-
-    console.log(attendance);
-  };
 
   // Helper function to format dates
   const formatDate = (date: string | null) => {
@@ -137,9 +146,9 @@ export default function HomePage() {
                             className="rounded-full"
                           />
                           <div>
-                            <p className="font-medium text-gray-800">{user?.name}</p>
-                            <p className="text-sm text-gray-500">{user?.email}</p>
-                            <p className="text-sm text-gray-500">{user?.position?.division} - {user?.position?.description}</p>
+                            <p className="font-medium text-gray-800">{admin?.name}</p>
+                            <p className="text-sm text-gray-500">{admin?.email}</p>
+                            <p className="text-sm text-gray-500">{admin?.position?.division} - {admin?.position?.description}</p>
                           </div>
                         </div>
                       </div>

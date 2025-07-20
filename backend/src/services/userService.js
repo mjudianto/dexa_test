@@ -60,7 +60,7 @@ exports.updateUser = async (id, payload, file, userId) => {
     // Update the user
     const updatedUser = await userRepository.updateUser(id, updatedPayload);
 
-    return updatedUser;
+    return existingUser;
   } catch (err) {
     console.log(err);
     throw new Error('Error updating user');

@@ -7,6 +7,7 @@ import { getUser } from '@/lib/user';
 interface AuthContextType {
   token: string | null;
   user: User | null;
+  admin: User | null;
   login: (token: string, user: User) => void;
   loginAdmin: (token: string, user: User) => void;
   logout: () => void;
@@ -30,6 +31,7 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [admin, setAdmin] = useState<User | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(JSON.parse(storedUserData));
     } else if (storedAdminToken && storedUserData) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUserData));
+      setAdmin(JSON.parse(storedUserData));
     } else {
       logout();
     }
@@ -58,9 +60,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const loginAdmin = (token: string, user: User) => {
     setToken(token);
-    setUser(user);
+    setAdmin(user);
     localStorage.setItem('adminAuthToken', token);
-    localStorage.setItem('userData', JSON.stringify(user));
+    localStorage.setItem('adminData', JSON.stringify(user));
     router.push('/admin/home');
   };
 
@@ -79,7 +81,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, login, loginAdmin, logout, updateUser }}>
+    <AuthContext.Provider value={{ token, user, admin, login, loginAdmin, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
