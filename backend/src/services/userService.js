@@ -58,9 +58,10 @@ exports.updateUser = async (id, payload, file, userId) => {
     }
 
     // Update the user
-    const updatedUser = await userRepository.updateUser(id, updatedPayload);
+    const updateUser = await userRepository.updateUser(id, updatedPayload);
+    const updatedUser = await userRepository.getUserById(id);
 
-    return existingUser;
+    return updatedUser;
   } catch (err) {
     console.log(err);
     throw new Error('Error updating user');

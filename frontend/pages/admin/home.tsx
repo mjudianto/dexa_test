@@ -10,7 +10,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 export default function HomePage() {
   const { admin, token } = useAuthContext(); // Use AuthContext to get user and token
   const [attendanceData, setAttendanceData] = useState({});
-  const [userData, setUserData] = useState<User | null>(null);
+  const [adminData, setAdminData] = useState<User | null>(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [search, setSearch] = useState("");
@@ -36,6 +36,11 @@ export default function HomePage() {
   useEffect(() => {
     if (token) {
       fetchAttendance();
+      const adminDataString = localStorage.getItem('adminData');
+      const localAdminData = JSON.parse(adminDataString || null);
+      if (localAdminData){
+        setAdminData(localAdminData)
+      }
     }
 
   }, [token, router]);
@@ -146,9 +151,9 @@ export default function HomePage() {
                             className="rounded-full"
                           />
                           <div>
-                            <p className="font-medium text-gray-800">{admin?.name}</p>
-                            <p className="text-sm text-gray-500">{admin?.email}</p>
-                            <p className="text-sm text-gray-500">{admin?.position?.division} - {admin?.position?.description}</p>
+                            <p className="font-medium text-gray-800">{adminData?.name}</p>
+                            <p className="text-sm text-gray-500">{adminData?.email}</p>
+                            <p className="text-sm text-gray-500">{adminData?.position?.division} - {adminData?.position?.description}</p>
                           </div>
                         </div>
                       </div>
